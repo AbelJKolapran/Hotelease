@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Hotel {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     UserHotel[]
+  rooms     Room[]
+  customers Customer[]
+  bookings  Booking[]
+  payments  Payment[]
+}
+
+model User {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  password  String
+  fullName  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  hotels    UserHotel[]
+}
+
+model UserHotel {
+  userId  String
+  hotelId String
+  role    Role
+
+  user  User  @relation(fields: [userId], references: [id])
+  hotel Hotel @relation(fields: [hotelId], references: [id])
+
+  @@id([userId, hotelId])
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+model Room {
+  id        String   @id @default(cuid())
+  hotelId   String
+  number    String
+  type      String
+  rateCents Int
+  status    RoomStatus @default(AVAILABLE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  hotel   Hotel   @relation(fields: [hotelId], references: [id])
+  bookings Booking[]
+
+  @@unique([hotelId, number])
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  OUT_OF_ORDER
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  hotelId   String
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hotel    Hotel     @relation(fields: [hotelId], references: [id])
+  bookings Booking[]
+}
+
+model Booking {
+  id           String      @id @default(cuid())
+  hotelId      String
+  roomId       String
+  customerId   String
+  checkInDate  DateTime
+  checkOutDate DateTime
+  status       BookingStatus @default(PENDING)
+  totalCents   Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hotel    Hotel    @relation(fields: [hotelId], references: [id])
+  room     Room     @relation(fields: [roomId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  payments Payment[]
+
+  @@index([hotelId, roomId])
+  @@index([hotelId, status])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  hotelId     String
+  bookingId   String
+  amountCents Int
+  currency    String   @default("USD")
+  provider    String   @default("STRIPE")
+  providerRef String?
+  status      PaymentStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+
+  hotel   Hotel   @relation(fields: [hotelId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([hotelId, bookingId])
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+
